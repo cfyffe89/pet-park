@@ -49,6 +49,11 @@ const ripples = new Ripples(scene);
 const poof = new Poof(scene);
 const input = new Input();
 const hint = document.getElementById('hint');
+input.onGesture = () => {
+  sound.start();
+  if (!document.fullscreenElement && !window.__noFullscreen)
+    document.documentElement.requestFullscreen?.().catch(() => {});
+};
 
 let swapCool = 0, speakCool = 0, rippleT = 0, t = 0;
 const clock = new THREE.Clock();
@@ -72,9 +77,7 @@ function step(dt) {
   const inp = input.poll();
 
   // The first press starts the music. Browsers block sound until then.
-  if (inp.any || inp.gesture) sound.start();
-  if (inp.gesture && !document.fullscreenElement && !window.__noFullscreen)
-    document.documentElement.requestFullscreen?.().catch(() => {});
+  if (inp.any) sound.start();
   if (sound.running) hint.classList.add('gone');
 
   const k = animal.k;

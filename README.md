@@ -2,7 +2,9 @@
 
 A calm 3D game for young children. You are a dog or a cat in a park. There are no goals, no score and no menus. Soft music plays.
 
-The game is one file: `dist/pet-park.html`. Open it in Chrome or Firefox. It does not need a server or an internet connection.
+**Play online:** https://cfyffe89.github.io/pet-park/
+
+The game is also one file: `dist/pet-park.html`. Open it in Chrome, Firefox or Safari. It does not need a server or an internet connection.
 
 ## Controls
 
@@ -30,7 +32,18 @@ The first button press starts the music (browsers block sound until a person pre
 
 ## Play on the TV
 
-**Option 1: Steam Deck (docked to the TV)**
+**Option 1: iPad with AirPlay to an Apple TV**
+
+1. Pair a PS4 DualShock 4 with the iPad: hold **PS + Share** until the light bar flashes, then select it in iPad **Settings → Bluetooth**.
+2. In Safari, open https://cfyffe89.github.io/pet-park/. Optional: **Share → Add to Home Screen** for a full-screen icon.
+3. Tap the screen once to start the music.
+4. Open Control Center → **Screen Mirroring** → select the Apple TV.
+
+DualShock 4 buttons: Cross or Square = hop, Circle or shoulders = bark or meow, Triangle = change animal. To use the controller on the PS4 again, connect it to the PS4 with a USB cable and press PS.
+
+The 8BitDo Ultimate 2C Wireless is not on 8BitDo's list of Apple-compatible controllers. Use it with a PC (2.4G dongle) or Steam Deck.
+
+**Option 2: Steam Deck (docked to the TV)**
 
 1. Copy `dist/pet-park.html` to the Deck, for example to `/home/deck/Games/pet-park.html`.
 2. In Desktop Mode, install Google Chrome from the Discover store.
@@ -42,7 +55,7 @@ The first button press starts the music (browsers block sound until a person pre
 
 Not yet tested on a Steam Deck. Steps 4 and 5 must be checked on the device.
 
-**Option 2: a PC or laptop connected to the TV**
+**Option 3: a PC or laptop connected to the TV**
 
 Open `dist/pet-park.html` in Chrome. Connect an Xbox or PlayStation controller. Press F for full screen.
 

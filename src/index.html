@@ -2,10 +2,13 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Pet Park">
 <title>Pet Park</title>
 <style>
-  html, body { margin: 0; height: 100%; overflow: hidden; background: #d2ecf6; cursor: none; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #d2ecf6; cursor: none; touch-action: none; -webkit-user-select: none; user-select: none; }
   canvas { display: block; }
   #hint {
     position: fixed; left: 50%; bottom: 8vh; transform: translateX(-50%);
