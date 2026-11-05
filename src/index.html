@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Pet Park</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #d2ecf6; cursor: none; }
+  canvas { display: block; }
+  #hint {
+    position: fixed; left: 50%; bottom: 8vh; transform: translateX(-50%);
+    width: clamp(56px, 7vw, 110px); opacity: 0.9; pointer-events: none;
+    transition: opacity 1.6s ease; animation: pulse 2.4s ease-in-out infinite;
+    filter: drop-shadow(0 3px 10px rgba(40, 70, 90, 0.35));
+  }
+  #hint.gone { opacity: 0 !important; animation: none; }
+  @keyframes pulse { 50% { opacity: 0.45; transform: translateX(-50%) scale(0.92); } }
+</style>
+</head>
+<body>
+<!-- The only on-screen element: a paw that fades once the first button press starts the music. -->
+<svg id="hint" viewBox="0 0 100 100" aria-label="Press any button">
+  <g fill="#ffffff">
+    <ellipse cx="50" cy="66" rx="22" ry="18"/>
+    <ellipse cx="24" cy="40" rx="9" ry="12" transform="rotate(-20 24 40)"/>
+    <ellipse cx="40" cy="24" rx="9" ry="12" transform="rotate(-6 40 24)"/>
+    <ellipse cx="60" cy="24" rx="9" ry="12" transform="rotate(6 60 24)"/>
+    <ellipse cx="76" cy="40" rx="9" ry="12" transform="rotate(20 76 40)"/>
+  </g>
+</svg>
+<!--APP-->
+</body>
+</html>
