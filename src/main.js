@@ -5,6 +5,8 @@ import { Animal } from './animal.js';
 import { FollowCam } from './camera.js';
 import { Balls, Leaves, Butterflies, Ripples, Poof } from './props.js';
 import { Sound } from './audio.js';
+import { buildPlatforms } from './platforms.js';
+import { standTop, pushOut, obstacles } from './obstacles.js';
 import { approach, approachAngle } from './math.js';
 
 const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
@@ -25,6 +27,7 @@ addEventListener('resize', () => {
 });
 
 const sound = new Sound();
+const platforms = buildPlatforms(scene); // before the world, so trees and grass keep clear
 const world = buildWorld(scene);
 const animal = new Animal('dog');
 scene.add(animal.root);
@@ -38,6 +41,12 @@ const player = {
   idle: 0,
   swimming: false,
   pitch: 0,
+  onTop: false, // standing on a stump, log, rock or platform
+  coyote: 0,    // a hop still works for a moment after walking off an edge
+  jumpBuf: 0,   // a hop pressed just before landing still happens
+  climbT: 0,    // time spent pushing into something; then the animal scrambles up by itself
+  visY: 0,
+  lastFloor: 0,
 };
 player.pos.y = heightAt(player.pos.x, player.pos.z);
 
@@ -90,7 +99,7 @@ function step(dt) {
   const wz = fz * inp.my + fx * inp.mx;
   const m = Math.min(1, Math.hypot(wx, wz));
 
-  const depth = WATER_Y - heightAt(player.pos.x, player.pos.z);
+  const depth = player.onTop ? -1 : WATER_Y - heightAt(player.pos.x, player.pos.z);
   const wasSwimming = player.swimming;
   player.swimming = depth > k.swimDepth * 0.8 && player.pos.y < WATER_Y + 0.1;
   const maxSpeed = k.speed * (player.swimming ? 0.5 : depth > 0 ? 0.8 : 1);
@@ -102,17 +111,46 @@ function step(dt) {
   player.pos.x += Math.sin(player.heading) * player.speed * dt;
   player.pos.z += Math.cos(player.heading) * player.speed * dt;
   collide(player.pos, k.radius);
+  const blocker = pushOut(player.pos, k.radius, player.pos.y);
   if (clampPark(player.pos, 0)) player.speed *= 0.9;
 
   // --- Up and down ---
   const ground = heightAt(player.pos.x, player.pos.z);
-  const floorY = depth > 0 ? Math.max(ground, WATER_Y - k.swimDepth) : ground;
+  const wet = WATER_Y - ground;
+  let floorY = wet > 0 ? Math.max(ground, WATER_Y - k.swimDepth) : ground;
+  // While rising from a hop, only the ground counts. Tops count when standing or falling.
+  const top = player.grounded || player.vy <= 0 ? standTop(player.pos.x, player.pos.z, player.pos.y) : -Infinity;
+  const onTop = top > floorY;
+  if (onTop) floorY = top;
   let landed = false;
-  if (inp.jump && player.grounded) {
+
+  // Walked off an edge: fall.
+  if (player.grounded && floorY < player.pos.y - 0.15) {
+    player.grounded = false;
+    player.vy = 0;
+  }
+
+  player.jumpBuf = inp.jump ? JUMP_BUFFER : player.jumpBuf - dt;
+  if (player.jumpBuf > 0 && (player.grounded || player.coyote > 0)) {
     player.vy = player.swimming ? 4 : 5.5;
     player.grounded = false;
+    player.jumpBuf = 0;
+    player.coyote = 0;
     sound.hop();
   }
+
+  // Pushing into a stump or step for a moment: scramble up it.
+  const climbH = blocker ? blocker.top - player.pos.y : 99;
+  if (AUTO_CLIMB > 0 && m > 0.5 && player.grounded && climbH < AUTO_CLIMB_MAX) {
+    player.climbT += dt;
+    if (player.climbT > AUTO_CLIMB) {
+      player.vy = Math.sqrt(2 * 16 * (climbH + 0.25));
+      player.grounded = false;
+      player.climbT = 0;
+      sound.hop();
+    }
+  } else player.climbT = 0;
+
   if (player.grounded) {
     player.pos.y = floorY;
   } else {
@@ -122,15 +160,19 @@ function step(dt) {
       player.pos.y = floorY;
       if (player.vy < -3) {
         landed = true;
-        if (depth > 0.05) {
+        if (wet > 0.05 && !onTop) {
           sound.splash(1);
           ripples.spawn(player.pos.x, player.pos.z, 1.6);
         } else sound.land();
-      }
+      } else if (onTop && player.vy < -1) sound.land();
+      if (onTop && !player.onTop) animal.happyT = Math.max(animal.happyT, 1.2); // tail wag
       player.vy = 0;
       player.grounded = true;
     }
   }
+  player.coyote = player.grounded ? COYOTE : player.coyote - dt;
+  player.onTop = onTop && player.grounded;
+  if (player.grounded) player.lastFloor = floorY;
   if (player.swimming && !wasSwimming) {
     sound.splash(0.8);
     ripples.spawn(player.pos.x, player.pos.z, 1.3);
@@ -157,10 +199,13 @@ function step(dt) {
   // --- Tilt with the slope ---
   const hf = heightAt(player.pos.x + Math.sin(player.heading) * 0.3, player.pos.z + Math.cos(player.heading) * 0.3);
   const hb = heightAt(player.pos.x - Math.sin(player.heading) * 0.3, player.pos.z - Math.cos(player.heading) * 0.3);
-  const slope = player.swimming ? 0 : Math.atan2(hf - hb, 0.6);
+  const slope = player.swimming || player.onTop ? 0 : Math.atan2(hf - hb, 0.6);
   player.pitch += (slope - player.pitch) * Math.min(1, dt * 8);
 
-  animal.root.position.copy(player.pos);
+  // Step up smoothly instead of popping up.
+  const dy = player.pos.y - player.visY;
+  player.visY = player.grounded && dy > 0.08 ? player.visY + dy * Math.min(1, dt * 22) : player.pos.y;
+  animal.root.position.set(player.pos.x, player.visY, player.pos.z);
   animal.root.rotation.set(-player.pitch, player.heading, 0, 'YXZ');
   animal.update(dt, player, t);
 
@@ -181,15 +226,21 @@ function step(dt) {
   poof.update(dt);
 
   focus.copy(player.pos);
-  if (!player.grounded) focus.y = Math.min(focus.y, floorY + 0.6);
+  if (!player.grounded) focus.y = Math.min(focus.y, Math.max(floorY, player.lastFloor) + 0.6);
   cam.update(dt, focus, player.heading, player.speed / k.speed, inp);
   world.update(dt, t, player.pos, camera);
+  platforms.update(dt, t);
 }
 requestAnimationFrame(frame);
 
+// Forgiving platforming for small children.
+const COYOTE = 0.18, JUMP_BUFFER = 0.25;
+const AUTO_CLIMB = 0.45;      // seconds of pushing into a step before the animal hops up by itself (0 = off)
+const AUTO_CLIMB_MAX = 1.05;  // the highest step it will hop up by itself
+
 // For testing in a browser console: __game.sim(2) runs 2 seconds of game time, then draws.
 window.__game = {
-  player, animal, cam, balls, leaves, sound,
+  player, animal, cam, balls, leaves, sound, obstacles, step,
   sim(seconds) {
     for (let i = 0; i < seconds * 60; i++) step(1 / 60);
     renderer.render(scene, camera);
