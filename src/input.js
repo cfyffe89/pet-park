@@ -19,14 +19,14 @@ export class Input {
     this.prevPad = [];
     this.gesture = false;
     // Safari (iPad) starts sound only inside the event handler itself, so call onGesture here.
-    const gesture = () => {
+    const gesture = (e) => {
       this.gesture = true;
-      if (this.onGesture) this.onGesture();
+      if (this.onGesture) this.onGesture(e);
     };
     addEventListener('keydown', (e) => {
       if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Tab'].includes(e.code)) e.preventDefault();
-      gesture();
       if (e.repeat) return;
+      gesture(e);
       this.keys.add(e.code);
       this.pressed.add(e.code);
     });
