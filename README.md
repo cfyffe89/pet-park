@@ -1,6 +1,6 @@
 # Pet Park
 
-A calm 3D game for young children. You are a dog or a cat in a park. There are no goals, no score and no menus. Soft music plays.
+A calm 3D game for young children. You are a dog, a cat, a pig, a horse, a giraffe, a gorilla, a T. rex, a barosaurus, a fire truck, a school bus, a bulldozer or an excavator in a park. There are no goals, no score and no menus. Soft music plays.
 
 **Play online:** https://cfyffe89.github.io/pet-park/
 
@@ -12,10 +12,25 @@ The game is also one file: `dist/pet-park.html`. Open it in Chrome, Firefox or S
 |---|---|---|
 | Left stick or D-pad | WASD or arrow keys | Move |
 | A or X | Space | Hop |
-| B, bumpers, triggers | E or Enter | Bark or meow |
-| Y | Q or Tab | Change dog ↔ cat |
+| B, bumpers, triggers | E or Enter | Make a sound (bark, oink, roar, siren ...) |
+| Y | Q or Tab | Become the next character |
 | Right stick (not necessary) | J L I K | Turn the camera |
 | | F | Full screen on/off |
+
+Y goes round all twelve characters in this order: dog, cat, pig, horse, giraffe, gorilla, T. rex, barosaurus, fire truck, school bus, bulldozer, excavator, then the dog again. Each one makes its own sound when it appears. The controls are the same for all of them. The tall ones walk through the pond instead of swimming.
+
+| Character | B button |
+|---|---|
+| Pig | Oink oink, ears flap |
+| Horse | Neigh, head up |
+| Giraffe | Soft hum, nod |
+| Gorilla | Sits up and pats its chest |
+| T. rex | Friendly roar, jaw opens, tiny arms wiggle |
+| Barosaurus | Long deep call, neck stretches up |
+| Fire truck | Wee-woo siren, lights flash, ladder lifts |
+| School bus | Beep beep, stop sign swings out |
+| Bulldozer | Engine goes brrm, blade lifts, smoke puff |
+| Excavator | Beep beep beep and one big scoop |
 
 The camera follows the animal without help. A child needs only the left stick.
 
@@ -59,7 +74,7 @@ At the edge of the park, a sandy path leads to a red gate with a car picture and
 3. Tap the screen once to start the music.
 4. Open Control Center → **Screen Mirroring** → select the Apple TV.
 
-DualShock 4 buttons: Cross or Square = hop, Circle or shoulders = bark or meow, Triangle = change animal. To use the controller on the PS4 again, connect it to the PS4 with a USB cable and press PS.
+DualShock 4 buttons: Cross or Square = hop, Circle or shoulders = make a sound, Triangle = next character. To use the controller on the PS4 again, connect it to the PS4 with a USB cable and press PS.
 
 The 8BitDo Ultimate 2C Wireless is not on 8BitDo's list of Apple-compatible controllers. Use it with a PC (2.4G dongle) or Steam Deck.
 
@@ -91,7 +106,8 @@ npm run dev      # rebuilds on every save
 |---|---|
 | `src/main.js` | Game loop, movement, buttons |
 | `src/world.js` | Terrain, pond, trees, flowers, grass, sky |
-| `src/animal.js` | Dog and cat models and animation |
+| `src/animal.js` | Dog and cat models, and the animation for every character |
+| `src/characters.js` | The other ten characters, their sizes and their sounds |
 | `src/props.js` | Balls, leaves, butterflies, ripples |
 | `src/city.js` | The city: roads, buildings, ramps, traffic, gates between park and city |
 | `src/vehicles.js` | Car, bus, digger, dump truck, cement mixer, crane and cone models |

@@ -1,19 +1,25 @@
-// The dog and the cat, built from simple shapes and animated in code.
+// The player character: the dog and the cat are built here; the others come from characters.js.
+// All of them are built from simple shapes and animated in code.
 import * as THREE from 'three';
 import { approach, lerp, clamp } from './math.js';
+import { CHARACTERS } from './characters.js';
 
 export const KINDS = {
   dog: {
-    speed: 6.0, radius: 0.34, swimDepth: 0.34, camDist: 6.2,
+    voice: 'bark', speed: 6.0, radius: 0.34, swimDepth: 0.34, camDist: 6.2, camLift: 0.45,
     fur: 0xd9a25e, light: 0xfff1dc, dark: 0x2b211c, ear: 0x9a6434, nose: 0x2b211c, inner: 0x9a6434,
     bodyR: 0.24, bodyLen: 0.48, legLen: 0.32, legR: 0.07, headR: 0.2, sitPitch: 0.5,
   },
   cat: {
-    speed: 5.4, radius: 0.28, swimDepth: 0.27, camDist: 5.4,
+    voice: 'meow', speed: 5.4, radius: 0.28, swimDepth: 0.27, camDist: 5.4, camLift: 0.45,
     fur: 0x8e96a3, light: 0xf7f3ee, dark: 0x22252b, ear: 0x8e96a3, nose: 0xf0a0a8, inner: 0xf3b6bd,
     bodyR: 0.18, bodyLen: 0.44, legLen: 0.25, legR: 0.052, headR: 0.17, sitPitch: 0.6,
   },
+  ...CHARACTERS,
 };
+
+// The order the Y button goes through.
+export const ORDER = Object.keys(KINDS);
 
 export class Animal {
   constructor(kind) {
@@ -43,7 +49,9 @@ export class Animal {
         }
       });
     }
-    this.build();
+    this.rig = null;
+    if (this.k.build) this.buildRig();
+    else this.build();
     this.happyT = 1.5;
   }
 
@@ -148,13 +156,22 @@ export class Animal {
     }
   }
 
+  buildRig() {
+    const body = (this.body = new THREE.Group());
+    this.root.add(body);
+    this.rig = this.k.build(this.root, body);
+    this.baseY = this.rig.baseY;
+    body.position.y = this.baseY;
+  }
+
   speak() {
-    this.speakT = 0.5;
+    this.speakT = this.k.speakLen || 0.5;
     this.happyT = 1.5;
   }
 
   // s: { speed, grounded, swimming, idle }
   update(dt, s, t) {
+    if (this.rig) return this.updateRig(dt, s, t);
     const k = this.k, isCat = this.kind === 'cat';
     const moving = s.speed > 0.15;
     const sp = Math.min(1, s.speed / k.speed);
@@ -237,5 +254,67 @@ export class Animal {
     if (this.blinkT < 0) this.blinkT = 2 + Math.random() * 3.5;
     const closed = this.blinkT < 0.12 || (sit > 0.95 && isCat && Math.sin(t * 0.2) > 0.6);
     for (const e of this.eyes) e.scale.y = closed ? 0.15 : 1;
+  }
+
+  // The same simple animation for every character from characters.js.
+  updateRig(dt, s, t) {
+    const k = this.k, r = this.rig;
+    const moving = s.speed > 0.15;
+    const sp = Math.min(1, s.speed / k.speed);
+    this.air = approach(this.air, s.grounded ? 0 : 1, dt * 7);
+    this.swim = approach(this.swim, s.swimming ? 1 : 0, dt * 4);
+    const wantRest = s.idle > 4 && s.grounded && !s.swimming;
+    this.sit = approach(this.sit, wantRest ? 1 : 0, dt * (wantRest ? 0.8 : 5));
+    this.speakT = Math.max(0, this.speakT - dt);
+    this.happyT = Math.max(0, this.happyT - dt);
+    const len = k.speakLen || 0.5;
+    const speaking = this.speakT > 0;
+    const u = speaking ? 1 - this.speakT / len : 0;
+    const env = speaking ? Math.sin(Math.min(1, u * 1.15) * Math.PI) : 0;
+    const breathe = Math.sin(t * 2.2) * 0.006;
+    this.stepped = false;
+
+    if (k.vehicle) {
+      for (const w of r.wheels) w.g.rotation.x += (s.speed * dt) / w.r;
+      // Engine rumble, a little lean when driving off a hop.
+      const rumble = Math.sin(t * 40) * (moving ? 0.008 : 0.004);
+      this.body.position.y = this.baseY + rumble;
+      this.body.rotation.x = -this.air * 0.12 + Math.sin(t * 1.7) * 0.004;
+      this.body.rotation.z = 0;
+    } else {
+      const rate = s.swimming ? 7 : moving ? (6 + s.speed * 2.4) * (r.stride || k.stride || 1) : 0;
+      this.phase += rate * dt;
+      const targetAmp = s.swimming ? 0.7 : Math.min(1, s.speed / 1.5) * (0.45 + 0.4 * sp);
+      this.amp = approach(this.amp, targetAmp, dt * 6);
+      const si = Math.floor(this.phase / Math.PI);
+      this.stepped = si !== this.stepIndex && (moving || s.swimming) && (s.grounded || s.swimming);
+      this.stepIndex = si;
+      const ph = this.phase, a = this.amp;
+      for (const lg of r.legs) {
+        const swing = Math.sin(ph + lg.off) * a * lg.amp;
+        lg.pivot.rotation.x = lerp(swing, lg.front ? -0.5 : 0.45, this.air * (1 - this.swim) * 0.8);
+      }
+      const bob = Math.abs(Math.sin(ph)) * 0.04 * a * (1 - this.swim);
+      this.body.position.y = this.baseY + bob + breathe - this.sit * 0.03;
+      this.body.rotation.x = Math.sin(ph * 2) * 0.03 * a - this.air * 0.1;
+      this.body.rotation.z = Math.sin(ph) * 0.025 * a;
+    }
+
+    // Look around when idle, and doze a little after a while.
+    const idleLook = clamp(s.idle / 2, 0, 1);
+    if (r.head) {
+      const rx = r.head.userData.rx || 0;
+      r.head.rotation.y = Math.sin(t * 0.37 + 1) * 0.4 * idleLook * (1 - this.sit);
+      r.head.rotation.x = rx + Math.sin(t * 0.23) * 0.08 * idleLook + this.sit * 0.2;
+    }
+    const happy = Math.min(1, this.happyT) + (moving ? 0.4 : 0);
+    (r.tail || []).forEach((g, i) => (g.rotation.y = Math.sin(t * 1.6 - i * 0.5) * (0.1 + 0.15 * happy)));
+
+    r.pose?.({ t, dt, env, u, speaking, moving, sp, sit: this.sit, air: this.air });
+
+    this.blinkT -= dt;
+    if (this.blinkT < 0) this.blinkT = 2 + Math.random() * 3.5;
+    const closed = this.blinkT < 0.12 || (!k.vehicle && this.sit > 0.95 && Math.sin(t * 0.2) > 0.6);
+    for (const e of r.eyes || []) e.scale.y = closed ? 0.15 : 1;
   }
 }

@@ -1,8 +1,8 @@
 // Controller and keyboard input. Every button does something friendly.
 //   Left stick / D-pad / WASD / arrows : move
 //   A, X / Space                        : hop
-//   B, bumpers, triggers / E, Enter     : bark or meow
-//   Y / Q, Tab                          : swap dog and cat
+//   B, bumpers, triggers / E, Enter     : make a sound (bark, meow, oink, roar, siren ...)
+//   Y / Q, Tab                          : become the next character
 //   Right stick / J, L, I, K            : turn the camera (optional)
 
 function deadzone(x, y, dz) {
