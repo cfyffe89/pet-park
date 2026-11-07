@@ -432,4 +432,134 @@ export class Sound {
     const t = this.ctx.currentTime;
     [72, 76, 79, 84].forEach((m, i) => this.pluck(t + i * 0.07, m, 0.06, this.sfx));
   }
+
+  // --- Voices for the other characters. All soft and friendly, never scary. ---
+
+  // One voiced sound: an oscillator through a filter, with a gain envelope.
+  //   pitch: [[time, Hz], ...] from t (linear glides)   env: [[time, gain], ...]
+  //   filter: [type, Hz, Q, (Hz at end)]                 vib: [rate, depth in Hz]
+  say(t, wave, pitch, env, filter, vib) {
+    const c = this.ctx;
+    const o = c.createOscillator(), g = c.createGain(), f = c.createBiquadFilter();
+    o.type = wave;
+    o.frequency.setValueAtTime(pitch[0][1], t);
+    for (const [dt, hz] of pitch.slice(1)) o.frequency.linearRampToValueAtTime(hz, t + dt);
+    f.type = filter[0];
+    f.frequency.setValueAtTime(filter[1], t);
+    f.Q.value = filter[2];
+    const end = env[env.length - 1][0];
+    if (filter[3]) f.frequency.linearRampToValueAtTime(filter[3], t + end);
+    g.gain.setValueAtTime(0.0001, t);
+    for (const [dt, v] of env) g.gain.linearRampToValueAtTime(v, t + dt);
+    let lfo;
+    if (vib) {
+      lfo = c.createOscillator();
+      const lg = c.createGain();
+      lfo.frequency.value = vib[0];
+      lg.gain.value = vib[1];
+      lfo.connect(lg).connect(o.frequency);
+      lfo.start(t);
+      lfo.stop(t + end + 0.05);
+    }
+    o.connect(f).connect(g).connect(this.sfx);
+    o.start(t);
+    o.stop(t + end + 0.05);
+  }
+
+  // Pig: two quick "oink"s.
+  oink() {
+    if (!this.ok) return;
+    const t = this.ctx.currentTime, p = 0.9 + Math.random() * 0.2;
+    for (const d of [0, 0.2]) {
+      this.say(t + d, 'sawtooth', [[0, 230 * p], [0.05, 260 * p], [0.15, 170 * p]], [[0.02, 0.16], [0.1, 0.12], [0.16, 0]], ['bandpass', 900, 3, 600], [40, 25]);
+      this.noiseBurst(t + d, 0.08, 'bandpass', 1200, 2, 0.05);
+    }
+  }
+
+  // Horse: a whinny that wobbles down, then a little snort.
+  neigh() {
+    if (!this.ok) return;
+    const t = this.ctx.currentTime;
+    this.say(t, 'sawtooth', [[0, 700], [0.12, 1150], [0.75, 520]], [[0.05, 0.1], [0.55, 0.08], [0.8, 0]], ['bandpass', 1500, 1.4, 900], [11, 70]);
+    this.noiseBurst(t + 0.85, 0.18, 'bandpass', 700, 1.5, 0.08);
+  }
+
+  // Giraffe: a soft, low "mm-mm" hum.
+  hum() {
+    if (!this.ok) return;
+    const t = this.ctx.currentTime;
+    this.say(t, 'triangle', [[0, 196], [0.3, 200], [0.4, 247], [0.8, 240]], [[0.08, 0.16], [0.32, 0.12], [0.42, 0.16], [0.85, 0]], ['lowpass', 700, 1], [5, 3]);
+  }
+
+  // Gorilla: "dum dum dum dum" on the chest, then a happy "hoo".
+  thump() {
+    if (!this.ok) return;
+    const t = this.ctx.currentTime;
+    for (let i = 0; i < 6; i++) {
+      const tt = t + 0.1 + i * 0.12;
+      this.tone(tt, 'sine', 150, 70, 0.14, 0.22);
+      this.noiseBurst(tt, 0.08, 'lowpass', 350, 0.7, 0.08);
+    }
+    this.say(t + 0.85, 'triangle', [[0, 300], [0.15, 400], [0.3, 360]], [[0.04, 0.12], [0.3, 0]], ['lowpass', 1200, 1]);
+  }
+
+  // T. rex: a big, friendly "RAWR" (not too low, not too long).
+  roar() {
+    if (!this.ok) return;
+    const t = this.ctx.currentTime;
+    this.say(t, 'sawtooth', [[0, 150], [0.2, 230], [0.8, 110]], [[0.08, 0.16], [0.5, 0.13], [0.85, 0]], ['lowpass', 700, 2, 450], [28, 18]);
+    this.say(t, 'square', [[0, 300], [0.2, 460], [0.8, 220]], [[0.08, 0.03], [0.85, 0]], ['bandpass', 1300, 2]);
+    this.noiseBurst(t, 0.7, 'bandpass', 900, 1, 0.06, 0.08);
+  }
+
+  // Barosaurus: a long, deep, gentle "hooo-ooo" call.
+  call() {
+    if (!this.ok) return;
+    const t = this.ctx.currentTime;
+    this.say(t, 'triangle', [[0, 150], [0.4, 185], [1.3, 125]], [[0.2, 0.22], [0.9, 0.18], [1.35, 0]], ['lowpass', 900, 1.5], [4.5, 4]);
+    this.say(t, 'sine', [[0, 300], [0.4, 370], [1.3, 250]], [[0.2, 0.05], [1.35, 0]], ['lowpass', 1200, 1]);
+  }
+
+  // Big dinosaur feet: a soft, low thud.
+  stomp() {
+    if (!this.ok) return;
+    const t = this.ctx.currentTime;
+    this.tone(t, 'sine', 110, 50, 0.16, 0.12);
+    this.noiseBurst(t, 0.1, 'lowpass', 300, 0.7, 0.04);
+  }
+
+  // Fire truck: "wee-woo wee-woo".
+  siren() {
+    if (!this.ok) return;
+    const t = this.ctx.currentTime, pitch = [[0, 700]];
+    for (let i = 0; i < 4; i++) pitch.push([i * 0.42 + 0.06, i % 2 ? 700 : 950], [i * 0.42 + 0.4, i % 2 ? 700 : 950]);
+    this.say(t, 'triangle', pitch, [[0.05, 0.12], [1.6, 0.1], [1.75, 0]], ['lowpass', 2500, 0.7]);
+  }
+
+  // School bus: "beep beep".
+  honk() {
+    if (!this.ok) return;
+    const t = this.ctx.currentTime;
+    for (const d of [0, 0.3]) {
+      for (const hz of [370, 466]) this.say(t + d, 'square', [[0, hz]], [[0.02, 0.05], [0.18, 0.05], [0.22, 0]], ['lowpass', 1600, 1]);
+    }
+  }
+
+  // Bulldozer: the engine goes "brrrm brrrm".
+  vroom() {
+    if (!this.ok) return;
+    const t = this.ctx.currentTime;
+    for (const d of [0, 0.5]) {
+      this.say(t + d, 'sawtooth', [[0, 55], [0.2, 95], [0.45, 60]], [[0.05, 0.2], [0.35, 0.16], [0.48, 0]], ['lowpass', 400, 2, 250], [18, 12]);
+    }
+  }
+
+  // Excavator: "beep beep beep" and a hiss from the arm.
+  digger() {
+    if (!this.ok) return;
+    const t = this.ctx.currentTime;
+    for (let i = 0; i < 3; i++) this.tone(t + i * 0.3, 'sine', 1000, 1000, 0.15, 0.05);
+    this.noiseBurst(t + 0.2, 0.8, 'highpass', 3000, 0.7, 0.025, 0.2);
+    this.say(t, 'sawtooth', [[0, 60], [1.2, 70]], [[0.1, 0.1], [1.1, 0.1], [1.3, 0]], ['lowpass', 300, 1], [16, 8]);
+  }
 }

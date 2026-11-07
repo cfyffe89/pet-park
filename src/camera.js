@@ -10,6 +10,7 @@ export class FollowCam {
     this.pitch = 0.3;
     this.dist = 6;
     this.targetDist = 6;
+    this.lift = this.targetLift = 0.45; // how far above the feet the camera looks (more for tall characters)
     this.focus = new THREE.Vector3();
     this.first = true;
     this.manualT = 0;
@@ -57,15 +58,16 @@ export class FollowCam {
       this.focus.y += (target.y - this.focus.y) * fy;
     }
 
+    this.lift += (this.targetLift - this.lift) * Math.min(1, dt * 3);
     const cp = Math.cos(this.pitch);
     const p = this.tmp.set(
       this.focus.x - Math.sin(this.yaw) * cp * this.dist,
-      this.focus.y + Math.sin(this.pitch) * this.dist + 0.4,
+      this.focus.y + Math.sin(this.pitch) * this.dist + this.lift - 0.05,
       this.focus.z - Math.cos(this.yaw) * cp * this.dist
     );
     const minY = heightAt(p.x, p.z) + 0.8;
     if (p.y < minY) p.y = minY;
     this.cam.position.copy(p);
-    this.cam.lookAt(this.focus.x, this.focus.y + 0.45, this.focus.z);
+    this.cam.lookAt(this.focus.x, this.focus.y + this.lift, this.focus.z);
   }
 }

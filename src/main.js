@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { Input } from './input.js';
 import { buildWorld, heightAt, WATER_Y, collide, clampPark } from './world.js';
-import { Animal } from './animal.js';
+import { Animal, ORDER } from './animal.js';
 import { FollowCam } from './camera.js';
 import { Balls, Leaves, Butterflies, Ripples, Poof } from './props.js';
 import { Sound } from './audio.js';
@@ -72,7 +72,7 @@ input.onGesture = (e) => {
   if (!document.fullscreenElement) document.documentElement.requestFullscreen?.().catch(() => {});
 };
 
-let swapCool = 0, speakCool = 0, rippleT = 0, t = 0;
+let swapCool = 0, speakCool = 0, rippleT = 0, t = 0, hello = 0;
 const clock = new THREE.Clock();
 const focus = new THREE.Vector3();
 
@@ -189,20 +189,31 @@ function step(dt) {
   player.idle = player.speed < 0.2 && player.grounded && !inp.jump ? player.idle + dt : 0;
 
   // --- Buttons ---
+  // After a change, the new character says hello by itself, so it is clear what it is.
+  if (hello > 0) {
+    hello -= dt;
+    if (hello <= 0) {
+      inp.speak = true;
+      speakCool = -1;
+    }
+  }
   if (inp.speak && speakCool < 0) {
     animal.speak();
-    animal.kind === 'dog' ? sound.bark() : sound.meow();
-    speakCool = 0.6;
+    sound[animal.k.voice]();
+    speakCool = Math.max(0.6, animal.k.speakLen * 0.8);
     player.idle = Math.min(player.idle, 3);
   }
+  // Y goes to the next character: dog, cat, pig, horse ... and back to the dog.
   if (inp.swap && swapCool < 0) {
-    animal.setKind(animal.kind === 'dog' ? 'cat' : 'dog');
+    animal.setKind(ORDER[(ORDER.indexOf(animal.kind) + 1) % ORDER.length]);
     poof.spawn(player.pos);
     sound.swap();
-    swapCool = 0.8;
+    swapCool = 0.6;
+    hello = 0.35;
     player.idle = 0;
   }
   cam.targetDist = animal.k.camDist;
+  cam.targetLift = animal.k.camLift;
 
   // --- Tilt with the slope ---
   const hf = heightAt(player.pos.x + Math.sin(player.heading) * 0.3, player.pos.z + Math.cos(player.heading) * 0.3);
@@ -217,7 +228,7 @@ function step(dt) {
   animal.root.rotation.set(-player.pitch, player.heading, 0, 'YXZ');
   animal.update(dt, player, t);
 
-  if (animal.stepped) sound.step(depth > 0.05);
+  if (animal.stepped) animal.k.heavy && depth <= 0.05 ? sound.stomp() : sound.step(depth > 0.05);
   if (depth > 0.05 && (player.speed > 0.5 || player.swimming)) {
     rippleT -= dt;
     if (rippleT < 0) {
