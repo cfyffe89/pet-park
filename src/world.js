@@ -15,7 +15,17 @@ export function pathDist(x, z) {
   return Math.abs(r - pr);
 }
 
+// Other places far from the park (the city) take over the ground, walls and edge inside their own region.
+// Each area has contains(x, z), heightAt(x, z), collide(pos, r) and clamp(pos, margin).
+export const areas = [];
+function areaAt(x, z) {
+  for (const a of areas) if (a.contains(x, z)) return a;
+  return null;
+}
+
 export function heightAt(x, z) {
+  const area = areas.length ? areaAt(x, z) : null;
+  if (area) return area.heightAt(x, z);
   let h = 1.6 + fbm(x * 0.025 + 10, z * 0.025 - 4) * 1.2;
   const r = Math.hypot(x, z);
   const rim = smoothstep(PARK_R - 4, PARK_R + 24, r);
@@ -45,9 +55,13 @@ export function collide(pos, r) {
       pos.z += dz * k;
     }
   }
+  const area = areas.length ? areaAt(pos.x, pos.z) : null;
+  if (area) area.collide(pos, r);
 }
 
 export function clampPark(pos, margin = 0) {
+  const area = areas.length ? areaAt(pos.x, pos.z) : null;
+  if (area) return area.clamp(pos, margin);
   const r = Math.hypot(pos.x, pos.z), max = PARK_R + 2 - margin;
   if (r > max) {
     pos.x *= max / r;

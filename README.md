@@ -30,6 +30,15 @@ The first button press starts the music (browsers block sound until a person pre
 - A pond: the animal swims.
 - The animal sits after a few seconds without input.
 
+## The city
+
+At the edge of the park, a sandy path leads to a red gate with a car picture and a glowing doorway. Walk through it to go to the city. In the city, a green gate with a tree picture (in the corner by the parked cars) leads back to the park. No buttons or menus are needed.
+
+- Roads with a bus and two cars that drive slowly around the loop. They stop and say "beep beep" if the animal stands in front of them.
+- A construction site: a digger that scoops, a dump truck that tips its load, a cement mixer with a turning drum, a tall crane with toy blocks, and a sand pile to climb.
+- Ramps to run up and hop off: a ramp park with small and big ramps, and one big ramp in the plaza.
+- Parked cars and traffic cones: run into them to push them. Cars are heavy and roll slowly. Hop over the cones.
+
 ## Play on the TV
 
 **Option 1: iPad with AirPlay to an Apple TV**
@@ -73,6 +82,8 @@ npm run dev      # rebuilds on every save
 | `src/world.js` | Terrain, pond, trees, flowers, grass, sky |
 | `src/animal.js` | Dog and cat models and animation |
 | `src/props.js` | Balls, leaves, butterflies, ripples |
+| `src/city.js` | The city: roads, buildings, ramps, traffic, gates between park and city |
+| `src/vehicles.js` | Car, bus, digger, dump truck, cement mixer, crane and cone models |
 | `src/camera.js` | Follow camera |
 | `src/input.js` | Controller and keyboard |
 | `src/audio.js` | Generated music and sounds (no audio files) |

@@ -5,6 +5,7 @@ import { Animal } from './animal.js';
 import { FollowCam } from './camera.js';
 import { Balls, Leaves, Butterflies, Ripples, Poof } from './props.js';
 import { Sound } from './audio.js';
+import { City } from './city.js';
 import { approach, approachAngle } from './math.js';
 
 const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
@@ -47,6 +48,7 @@ const leaves = new Leaves(scene, world.trees, sound);
 const butterflies = new Butterflies(scene, world.flowerSpots);
 const ripples = new Ripples(scene);
 const poof = new Poof(scene);
+const city = new City(scene, sound, [animal.root]); // reached through the gate at the park edge
 const input = new Input();
 const hint = document.getElementById('hint');
 input.onGesture = () => {
@@ -184,12 +186,13 @@ function step(dt) {
   if (!player.grounded) focus.y = Math.min(focus.y, floorY + 0.6);
   cam.update(dt, focus, player.heading, player.speed / k.speed, inp);
   world.update(dt, t, player.pos, camera);
+  city.update(dt, t, player, cam);
 }
 requestAnimationFrame(frame);
 
 // For testing in a browser console: __game.sim(2) runs 2 seconds of game time, then draws.
 window.__game = {
-  player, animal, cam, balls, leaves, sound,
+  player, animal, cam, balls, leaves, sound, city,
   sim(seconds) {
     for (let i = 0; i < seconds * 60; i++) step(1 / 60);
     renderer.render(scene, camera);
