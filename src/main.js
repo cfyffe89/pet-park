@@ -51,10 +51,16 @@ const poof = new Poof(scene);
 const city = new City(scene, sound, [animal.root]); // reached through the gate at the park edge
 const input = new Input();
 const hint = document.getElementById('hint');
-input.onGesture = () => {
+// Ask for fullscreen once, on the first gesture. After that only F toggles it,
+// so leaving fullscreen (F or Esc) sticks and later presses don't pull it back.
+let autoFullscreenDone = !!window.__noFullscreen;
+input.onGesture = (e) => {
   sound.start();
-  if (!document.fullscreenElement && !window.__noFullscreen)
-    document.documentElement.requestFullscreen?.().catch(() => {});
+  if (autoFullscreenDone) return;
+  autoFullscreenDone = true;
+  // F has its own handler below; requesting here too would double up.
+  if (e?.code === 'KeyF') return;
+  if (!document.fullscreenElement) document.documentElement.requestFullscreen?.().catch(() => {});
 };
 
 let swapCool = 0, speakCool = 0, rippleT = 0, t = 0;
@@ -62,7 +68,7 @@ const clock = new THREE.Clock();
 const focus = new THREE.Vector3();
 
 addEventListener('keydown', (e) => {
-  if (e.code === 'KeyF') {
+  if (e.code === 'KeyF' && !e.repeat) {
     if (document.fullscreenElement) document.exitFullscreen();
     else document.documentElement.requestFullscreen?.().catch(() => {});
   }
