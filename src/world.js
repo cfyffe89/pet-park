@@ -2,6 +2,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { fbm, mulberry32, smoothstep, lerp } from './math.js';
+import { nearObstacle } from './obstacles.js';
 
 export const PARK_R = 50;        // the animal stays inside this radius
 export const WATER_Y = 0;
@@ -301,6 +302,7 @@ export function buildWorld(scene) {
       if (pathDist(x, z) < 3) return false;
       if (Math.hypot(x - POND.x, z - POND.z) < POND.r + 4) return false;
       if (Math.hypot(x + 7, z - 8) < 4) return false; // picnic blanket
+      if (nearObstacle(x, z, 1.8)) return false; // stumps, logs, platforms
     }
     for (const t of trees) if ((t.x - x) ** 2 + (t.z - z) ** 2 < (inside ? 30 : 20)) return false;
     // Inside the park: tall round trees only, so the camera passes under the leaves.
@@ -376,7 +378,7 @@ export function buildWorld(scene) {
   for (let i = 0, n = 0; i < 300 && n < 18; i++) {
     const a = rand(0, Math.PI * 2), r = rand(10, PARK_R - 4);
     const x = Math.cos(a) * r, z = Math.sin(a) * r;
-    if (pathDist(x, z) < 2.5 || heightAt(x, z) < 0.5 || !isClear(x, z, 2.5)) continue;
+    if (pathDist(x, z) < 2.5 || heightAt(x, z) < 0.5 || !isClear(x, z, 2.5) || nearObstacle(x, z, 2)) continue;
     bushes.push({ x, z, s: rand(0.6, 1.0), inside: true });
     n++;
   }
@@ -413,7 +415,7 @@ export function buildWorld(scene) {
     for (let k = 0; k < count; k++) {
       const a = rand(0, Math.PI * 2), d = Math.sqrt(rng()) * 3;
       const x = spot.x + Math.cos(a) * d, z = spot.z + Math.sin(a) * d;
-      if (pathDist(x, z) < 1.4 || heightAt(x, z) < 0.4 || !isClear(x, z, 0.2)) continue;
+      if (pathDist(x, z) < 1.4 || heightAt(x, z) < 0.4 || !isClear(x, z, 0.2) || nearObstacle(x, z, 0.1)) continue;
       flowers.push({ x, z, s: rand(0.75, 1.35), c: rng() < 0.75 ? c : c2 });
     }
   }
@@ -461,7 +463,7 @@ export function buildWorld(scene) {
   for (let i = 0; tufts.length < 9000 && i < 24000; i++) {
     const a = rand(0, Math.PI * 2), r = Math.sqrt(rng()) * (PARK_R + 4);
     const x = Math.cos(a) * r, z = Math.sin(a) * r;
-    if (pathDist(x, z) < 1.3 || heightAt(x, z) < 0.35) continue;
+    if (pathDist(x, z) < 1.3 || heightAt(x, z) < 0.35 || nearObstacle(x, z, 0.05)) continue;
     tufts.push({ x, z, s: rand(0.55, 1.05) });
   }
   const tuftMesh = new THREE.InstancedMesh(tuftGeo, tuftMat, tufts.length);

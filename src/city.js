@@ -3,6 +3,7 @@
 // Walking into the city gate's glowing doorway brings the animal back to the park.
 import * as THREE from 'three';
 import { heightAt, colliders, areas, pathDist, POND } from './world.js';
+import { nearObstacle } from './obstacles.js';
 import { mulberry32, smoothstep, wrapAngle } from './math.js';
 import { makeCar, makeBus, makeDigger, makeDumpTruck, makeMixer, makeCrane, makeCone, add, rbox, mat } from './vehicles.js';
 
@@ -637,6 +638,7 @@ export class City {
           const x = Math.cos(a) * r - Math.sin(a) * lat, z = Math.sin(a) * r + Math.cos(a) * lat;
           for (const c of colliders) clear = Math.min(clear, Math.hypot(x - c.x, z - c.z) - c.r);
           if (Math.hypot(x - POND.x, z - POND.z) < POND.r + 3) clear = -1;
+          if (nearObstacle(x, z, 1.5)) clear = Math.min(clear, 0); // stumps, logs, rocks
         }
       }
       // Prefer the side the animal looks at when the game starts (toward the pond, a = -0.75).
