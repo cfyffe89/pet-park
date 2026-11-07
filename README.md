@@ -19,6 +19,15 @@ The game is also one file: `dist/pet-park.html`. Open it in Chrome, Firefox or S
 
 The camera follows the animal without help. A child needs only the left stick.
 
+Climbing is forgiving:
+
+- Low steps (up to about a paw's height) need no hop. The animal walks up them.
+- Push into a taller stump or step for about half a second and the animal scrambles up by itself. The hop button is faster, but never needed.
+- A hop still works for a moment after the animal walks off an edge, and a hop pressed just before landing still happens.
+- The animal can stand a little past an edge without falling off.
+
+To change these, edit the numbers at `COYOTE`, `JUMP_BUFFER`, `AUTO_CLIMB` in `src/main.js` and `STEP_UP`, `GRACE` in `src/obstacles.js`. Set `AUTO_CLIMB` to 0 to make the hop button necessary.
+
 The first button press starts the music (browsers block sound until a person presses something). A white paw shows until then.
 
 ## Things in the park
@@ -27,7 +36,9 @@ The first button press starts the music (browsers block sound until a person pre
 - Leaf piles under some trees: run or hop through them.
 - Butterflies over the flower beds: they fly away when the animal comes near.
 - Flowers and grass bend when the animal walks through them.
-- A pond: the animal swims.
+- A pond: the animal swims, or hops across the stepping stones.
+- A climbing corner near the start: a flat rock, stumps like stairs, a wooden platform, a lookout with a yellow flag, a log and a row of hop-along stumps.
+- Tree stumps, logs and flat rocks around the park to climb on.
 - The animal sits after a few seconds without input.
 
 ## The city

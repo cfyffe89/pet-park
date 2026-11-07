@@ -1,16 +1,21 @@
 // Soft generative music and gentle sound effects. No audio files.
 const mtof = (m) => 440 * Math.pow(2, (m - 69) / 12);
 
-// Cmaj7, Am7, Fmaj7, G6: slow and calm.
+// Cmaj7, Am7, Fmaj7, G6: slow and calm. Each chord has a low pad voicing and
+// four chime notes in the C5-C6 range, where TV speakers are clear.
 const CHORDS = [
-  [48, 55, 64, 71],
-  [45, 52, 60, 67],
-  [41, 48, 57, 64],
-  [43, 50, 59, 64],
+  { pad: [48, 60, 64, 67], arp: [72, 76, 79, 83] },
+  { pad: [45, 57, 60, 64], arp: [69, 72, 76, 79] },
+  { pad: [41, 57, 60, 64], arp: [69, 72, 77, 81] },
+  { pad: [43, 55, 59, 64], arp: [67, 71, 74, 79] },
 ];
-const SCALE = [60, 62, 64, 67, 69, 72, 74, 76, 79, 81];
-const BEAT = 0.8;
-const CHORD_LEN = BEAT * 12;
+// C major pentatonic: any note sounds fine over any chord.
+const SCALE = [72, 74, 76, 79, 81, 84, 86, 88];
+const CHIMES = [84, 86, 88, 91, 93, 96];
+const BEAT = 0.75;
+const CHORD_LEN = BEAT * 8;
+// Music-box arpeggio: chord tone per beat, -1 is a rest.
+const ARP = [0, 2, 1, 3, 2, -1, 1, -1];
 
 export class Sound {
   constructor() {
@@ -80,7 +85,8 @@ export class Sound {
     this.nextBeat = now + 0.2 + BEAT * 2;
     this.chordIdx = 0;
     this.beatIdx = 0;
-    this.mel = 4;
+    this.mel = 3;
+    this.nextChimes = now + 12;
     this.nextBird = now + 5;
     this.wind();
     setInterval(() => this.tick(), 100);
@@ -97,13 +103,15 @@ export class Sound {
   }
 
   tick() {
-    const c = this.ctx;
-    if (c.state !== 'running') return;
-    const now = c.currentTime, ahead = now + 0.5;
+    if (this.ctx.state === 'running') this.schedule(this.ctx.currentTime);
+  }
+
+  schedule(now) {
+    const ahead = now + 0.5;
     if (this.nextChord < now - 1) this.nextChord = now + 0.1;
     if (this.nextBeat < now - 1) this.nextBeat = now + 0.1;
     while (this.nextChord < ahead) {
-      this.chord(this.nextChord, CHORDS[this.chordIdx % CHORDS.length]);
+      this.chord(this.nextChord, CHORDS[this.chordIdx % CHORDS.length].pad);
       this.chordIdx++;
       this.nextChord += CHORD_LEN;
     }
@@ -115,61 +123,88 @@ export class Sound {
       this.birds(now + 0.05);
       this.nextBird = now + 6 + Math.random() * 12;
     }
+    if (now > this.nextChimes) {
+      this.windChimes(now + 0.05);
+      this.nextChimes = now + 20 + Math.random() * 25;
+    }
   }
 
+  // Quiet warm bed under the chimes.
   chord(t, notes) {
     const c = this.ctx;
     const lp = c.createBiquadFilter();
     lp.type = 'lowpass';
-    lp.frequency.value = 1000;
+    lp.frequency.value = 900;
     lp.connect(this.music);
     notes.forEach((m, i) => {
-      for (const [type, det, vol] of [['sine', 0, 0.05], ['triangle', 7, 0.025]]) {
-        const o = c.createOscillator(), g = c.createGain();
-        o.type = type;
-        o.frequency.value = mtof(m);
-        o.detune.value = det;
-        const peak = vol * (i === 0 ? 1.3 : 1);
-        g.gain.setValueAtTime(0, t);
-        g.gain.linearRampToValueAtTime(peak, t + 3);
-        g.gain.setValueAtTime(peak, t + CHORD_LEN);
-        g.gain.setTargetAtTime(0, t + CHORD_LEN, 1.2);
-        o.connect(g).connect(lp);
-        o.start(t);
-        o.stop(t + CHORD_LEN + 6);
-      }
+      const o = c.createOscillator(), g = c.createGain();
+      o.frequency.value = mtof(m);
+      o.detune.value = (i % 2 ? 4 : -4);
+      const peak = i === 0 ? 0.05 : 0.028;
+      g.gain.setValueAtTime(0, t);
+      g.gain.linearRampToValueAtTime(peak, t + 2.5);
+      g.gain.setValueAtTime(peak, t + CHORD_LEN);
+      g.gain.setTargetAtTime(0, t + CHORD_LEN, 1);
+      o.connect(g).connect(lp);
+      o.start(t);
+      o.stop(t + CHORD_LEN + 5);
     });
   }
 
   beat(t) {
-    const bar = this.beatIdx % 4;
+    const step = this.beatIdx % ARP.length;
+    const ch = CHORDS[Math.floor(this.beatIdx / ARP.length) % CHORDS.length];
     this.beatIdx++;
-    const chance = bar === 0 ? 0.6 : 0.3;
-    if (Math.random() > chance) return;
-    const steps = [-2, -1, -1, 0, 1, 1, 2];
-    this.mel = Math.max(0, Math.min(SCALE.length - 1, this.mel + steps[Math.floor(Math.random() * steps.length)]));
-    const off = Math.random() < 0.25 ? BEAT / 2 : 0;
-    this.pluck(t + off, SCALE[this.mel] + 12, 0.055, this.music, true);
-    if (Math.random() < 0.15) this.pluck(t + off, SCALE[Math.max(0, this.mel - 2)] + 12, 0.03, this.music, true);
+    // Music box: soft, steady, so the music is always there.
+    const a = ARP[step];
+    if (a >= 0 && Math.random() > 0.12) this.chime(t, ch.arp[a], 0.1, this.music);
+    // Melody: an occasional brighter chime on top, with an echo.
+    if (step % 2 === 0 && Math.random() < (step === 0 ? 0.55 : 0.3)) {
+      const steps = [-2, -1, -1, 0, 1, 1, 2];
+      this.mel = Math.max(0, Math.min(SCALE.length - 1, this.mel + steps[Math.floor(Math.random() * steps.length)]));
+      const off = Math.random() < 0.3 ? BEAT / 2 : 0;
+      this.chime(t + off, SCALE[this.mel] + 12, 0.11, this.music, true);
+    }
   }
 
-  pluck(t, midi, vol, dest, echo = false) {
+  // A soft bell: sine partials, with the bright upper ones fading first.
+  // The second fundamental is detuned a little, so the note shimmers.
+  chime(t, midi, vol, dest, echo = false, len = 2.6) {
     const c = this.ctx, f = mtof(midi);
-    const g = c.createGain();
-    g.gain.setValueAtTime(0.0001, t);
-    g.gain.exponentialRampToValueAtTime(vol, t + 0.008);
-    g.gain.exponentialRampToValueAtTime(0.0001, t + 1.8);
-    g.connect(dest);
-    if (echo) g.connect(this.delay);
-    for (const [mul, v] of [[1, 1], [2, 0.18], [3.01, 0.06]]) {
-      const o = c.createOscillator(), og = c.createGain();
-      o.type = 'sine';
+    const out = c.createGain();
+    out.gain.value = vol;
+    out.connect(dest);
+    if (echo) out.connect(this.delay);
+    for (const [mul, v, decay, det] of [[1, 0.6, len, 0], [1, 0.4, len, 5], [2, 0.2, len * 0.4, 0], [3, 0.06, len * 0.2, 0], [4.2, 0.03, len * 0.1, 0]]) {
+      if (f * mul > 9000) continue;
+      const o = c.createOscillator(), g = c.createGain();
       o.frequency.value = f * mul;
-      og.gain.value = v;
-      o.connect(og).connect(g);
+      o.detune.value = det;
+      g.gain.setValueAtTime(0, t);
+      g.gain.linearRampToValueAtTime(v, t + 0.012);
+      g.gain.setTargetAtTime(0, t + 0.012, decay / 4);
+      o.connect(g).connect(out);
       o.start(t);
-      o.stop(t + 2);
+      o.stop(t + decay + 0.2);
     }
+  }
+
+  windChimes(t) {
+    const c = this.ctx;
+    const pan = c.createStereoPanner();
+    pan.pan.value = Math.random() * 1.2 - 0.6;
+    pan.connect(this.music);
+    const n = 4 + Math.floor(Math.random() * 4);
+    let t0 = t;
+    for (let i = 0; i < n; i++) {
+      this.chime(t0, CHIMES[Math.floor(Math.random() * CHIMES.length)], 0.035, pan, false, 3.5);
+      t0 += 0.12 + Math.random() * 0.3;
+    }
+  }
+
+  // Short bell for sound effects.
+  pluck(t, midi, vol, dest) {
+    this.chime(t, midi, vol, dest, false, 1.6);
   }
 
   birds(t) {
@@ -265,25 +300,79 @@ export class Sound {
     this.noiseBurst(this.ctx.currentTime, 0.12, 'lowpass', 260, 0.7, 0.06);
   }
 
+  // A friendly "ruff": a voiced sound shaped by two mouth resonances that open
+  // then close, with a little breath at the start. Pitch varies on each press.
   bark() {
     if (!this.ok) return;
     const c = this.ctx;
-    for (const dt of [0, 0.2]) {
-      const t = c.currentTime + dt;
-      const o = c.createOscillator(), bp = c.createBiquadFilter(), g = c.createGain();
-      o.type = 'sawtooth';
-      o.frequency.setValueAtTime(500, t);
-      o.frequency.exponentialRampToValueAtTime(320, t + 0.11);
-      bp.type = 'bandpass';
-      bp.frequency.value = 1000;
-      bp.Q.value = 1.8;
-      g.gain.setValueAtTime(0.0001, t);
-      g.gain.exponentialRampToValueAtTime(0.16, t + 0.012);
-      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.13);
-      o.connect(bp).connect(g).connect(this.sfx);
-      o.start(t);
-      o.stop(t + 0.16);
+    if (!this.voice) {
+      // Glottal-like source: harmonics that fall off faster than a sawtooth.
+      const n = 40, re = new Float32Array(n), im = new Float32Array(n);
+      for (let k = 1; k < n; k++) im[k] = 1 / Math.pow(k, 1.4);
+      this.voice = c.createPeriodicWave(re, im);
     }
+    const count = Math.random() < 0.6 ? 2 : 1;
+    const p = 0.92 + Math.random() * 0.16;
+    for (let i = 0; i < count; i++) {
+      const t = c.currentTime + i * (0.24 + Math.random() * 0.05);
+      const pp = p * (i ? 0.96 : 1);
+      this.woof(t, 300 * pp, 0.2 * pp);
+    }
+  }
+
+  woof(t, f0, len) {
+    const c = this.ctx;
+    const out = c.createGain();
+    out.gain.setValueAtTime(0.0001, t);
+    out.gain.exponentialRampToValueAtTime(0.2, t + 0.018);
+    out.gain.setValueAtTime(0.2, t + len * 0.3);
+    out.gain.exponentialRampToValueAtTime(0.0001, t + len);
+    const lp = c.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.frequency.value = 3200;
+    out.connect(lp).connect(this.sfx);
+
+    // Two formants ("wuh" -> "ah" -> "f"), in parallel.
+    const formants = [[550, 850, 500, 5, 1], [1150, 1500, 1000, 7, 0.45]].map(([a, b, e, q, v]) => {
+      const bp = c.createBiquadFilter(), g = c.createGain();
+      bp.type = 'bandpass';
+      bp.Q.value = q;
+      bp.frequency.setValueAtTime(a, t);
+      bp.frequency.linearRampToValueAtTime(b, t + len * 0.3);
+      bp.frequency.linearRampToValueAtTime(e, t + len);
+      g.gain.value = v * q * 0.5;
+      bp.connect(g).connect(out);
+      return bp;
+    });
+
+    const o = c.createOscillator();
+    o.setPeriodicWave(this.voice);
+    o.frequency.setValueAtTime(f0 * 0.85, t);
+    o.frequency.linearRampToValueAtTime(f0 * 1.15, t + len * 0.25);
+    o.frequency.exponentialRampToValueAtTime(f0 * 0.7, t + len);
+    // A little roughness, as a real throat has.
+    const wob = c.createOscillator(), wg = c.createGain();
+    wob.frequency.value = 33 + Math.random() * 10;
+    wg.gain.value = f0 * 0.03;
+    wob.connect(wg).connect(o.frequency);
+    const og = c.createGain();
+    og.gain.value = 0.5;
+    o.connect(og);
+    for (const bp of formants) og.connect(bp);
+    o.start(t);
+    wob.start(t);
+    o.stop(t + len + 0.05);
+    wob.stop(t + len + 0.05);
+
+    // Breath: a short puff of noise through the same mouth.
+    const src = c.createBufferSource(), ng = c.createGain();
+    src.buffer = this.noise;
+    ng.gain.setValueAtTime(0.0001, t);
+    ng.gain.exponentialRampToValueAtTime(0.25, t + 0.01);
+    ng.gain.exponentialRampToValueAtTime(0.0001, t + len * 0.6);
+    src.connect(ng);
+    for (const bp of formants) ng.connect(bp);
+    src.start(t, Math.random() * 1.5, len);
   }
 
   meow() {

@@ -2,6 +2,7 @@
 import * as THREE from 'three';
 import { heightAt, normalAt, WATER_Y, PARK_R, colliders } from './world.js';
 import { mulberry32 } from './math.js';
+import { standTop, pushOut } from './obstacles.js';
 
 const rng = mulberry32(7);
 const rand = (a, b) => a + (b - a) * rng();
@@ -96,6 +97,17 @@ export class Balls {
         v.x *= fr;
         v.z *= fr;
       }
+
+      // Stumps, logs, platforms: roll along the top, bounce off the sides.
+      const top = standTop(p.x, p.z, p.y - b.r, 0, 0.05);
+      if (p.y - b.r < top) {
+        p.y = top + b.r;
+        if (v.y < 0) v.y = v.y < -3 ? -v.y * 0.4 : 0;
+        const fr = Math.exp(-0.45 * dt);
+        v.x *= fr;
+        v.z *= fr;
+      }
+      pushOut(p, b.r, p.y - b.r, 0.05, v);
 
       // Trees, rocks, benches
       for (const c of colliders) {
